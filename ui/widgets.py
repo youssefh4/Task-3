@@ -318,3 +318,109 @@ def create_view_controls(parent_layout, update_scene_cb, reset_camera_cb, clear_
     
     return buttons
 
+
+def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_waypoints_cb,
+                                       start_orbit_cb, start_custom_cb, stop_cb, pause_cb):
+    """Create camera fly-through control widgets.
+    
+    Args:
+        parent_layout: Layout to add controls to
+        record_waypoint_cb: Callback for record waypoint button
+        clear_waypoints_cb: Callback for clear waypoints button
+        start_orbit_cb: Callback for start orbit button
+        start_custom_cb: Callback for start custom path button
+        stop_cb: Callback for stop button
+        pause_cb: Callback for pause/resume button
+        
+    Returns:
+        dict: Dictionary with control references
+    """
+    group, layout = create_groupbox("🎥 Camera Fly-Through", parent_layout)
+    
+    controls = {}
+    
+    # Path mode selection
+    mode_label = QtWidgets.QLabel("Path Mode:")
+    mode_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    layout.addWidget(mode_label)
+    
+    controls['mode_combo'] = QtWidgets.QComboBox()
+    controls['mode_combo'].addItems(["Custom Path", "Orbit"])
+    layout.addWidget(controls['mode_combo'])
+    
+    # Waypoint controls
+    waypoint_label = QtWidgets.QLabel("Waypoints:")
+    waypoint_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    layout.addWidget(waypoint_label)
+    
+    controls['record'] = QtWidgets.QPushButton("📍 Record Waypoint")
+    controls['record'].clicked.connect(record_waypoint_cb)
+    layout.addWidget(controls['record'])
+    
+    controls['clear'] = QtWidgets.QPushButton("🗑️ Clear Waypoints")
+    controls['clear'].clicked.connect(clear_waypoints_cb)
+    layout.addWidget(controls['clear'])
+    
+    controls['waypoint_count'] = QtWidgets.QLabel("Waypoints: 0")
+    controls['waypoint_count'].setStyleSheet("padding: 5px; background-color: #f0f0f0; border-radius: 3px;")
+    controls['waypoint_count'].setAlignment(QtCore.Qt.AlignCenter)
+    layout.addWidget(controls['waypoint_count'])
+    
+    layout.addSpacing(5)
+    
+    # Animation controls
+    anim_label = QtWidgets.QLabel("Animation:")
+    anim_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    layout.addWidget(anim_label)
+    
+    controls['start_orbit'] = QtWidgets.QPushButton("🌐 Start Orbit")
+    controls['start_orbit'].clicked.connect(start_orbit_cb)
+    layout.addWidget(controls['start_orbit'])
+    
+    controls['start_custom'] = QtWidgets.QPushButton("🛤️ Start Custom Path")
+    controls['start_custom'].clicked.connect(start_custom_cb)
+    controls['start_custom'].setEnabled(False)
+    layout.addWidget(controls['start_custom'])
+    
+    controls['pause'] = QtWidgets.QPushButton("⏸️ Pause")
+    controls['pause'].clicked.connect(pause_cb)
+    controls['pause'].setEnabled(False)
+    layout.addWidget(controls['pause'])
+    
+    controls['stop'] = QtWidgets.QPushButton("⏹️ Stop")
+    controls['stop'].clicked.connect(stop_cb)
+    controls['stop'].setEnabled(False)
+    layout.addWidget(controls['stop'])
+    
+    # Speed control
+    speed_label = QtWidgets.QLabel("Speed:")
+    speed_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    layout.addWidget(speed_label)
+    
+    speed_layout = QtWidgets.QHBoxLayout()
+    controls['speed_slider'] = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+    controls['speed_slider'].setMinimum(10)
+    controls['speed_slider'].setMaximum(200)
+    controls['speed_slider'].setValue(100)
+    controls['speed_label'] = QtWidgets.QLabel("100%")
+    controls['speed_label'].setMinimumWidth(40)
+    speed_layout.addWidget(controls['speed_slider'])
+    speed_layout.addWidget(controls['speed_label'])
+    layout.addLayout(speed_layout)
+    
+    controls['speed_slider'].valueChanged.connect(
+        lambda val: controls['speed_label'].setText(f"{val}%")
+    )
+    
+    # Loop checkbox
+    controls['loop_checkbox'] = QtWidgets.QCheckBox("Loop Animation")
+    controls['loop_checkbox'].setChecked(True)
+    layout.addWidget(controls['loop_checkbox'])
+    
+    # Status label
+    controls['status'] = QtWidgets.QLabel("Status: Stopped")
+    controls['status'].setStyleSheet("padding: 5px; background-color: #e8f4f8; border-radius: 3px;")
+    controls['status'].setAlignment(QtCore.Qt.AlignCenter)
+    layout.addWidget(controls['status'])
+    
+    return controls

@@ -14,7 +14,7 @@ from ui.widgets import (
     create_slice_viewer, create_file_loading_controls,
     create_medical_imaging_controls, create_mpr_controls,
     create_models_controls, create_clipping_controls,
-    create_view_controls
+    create_view_controls, create_camera_flythrough_controls
 )
 
 # Import handlers
@@ -41,6 +41,12 @@ from mpr.handlers import (
 )
 
 from gltf.handler import import_gltf_model, import_gltf_animated, WEBENGINE_AVAILABLE
+
+from camera.path_manager import (
+    record_waypoint, clear_waypoints, generate_orbit_path,
+    start_flythrough, stop_flythrough, update_camera_animation,
+    get_path_info
+)
 
 
 class STLViewer(QtWidgets.QWidget):
@@ -146,6 +152,16 @@ class STLViewer(QtWidgets.QWidget):
             lambda: clear_views(self)
         )
         
+        self.camera_controls = create_camera_flythrough_controls(
+            control_scroll_layout,
+            lambda: self.record_camera_waypoint(),
+            lambda: self.clear_camera_waypoints(),
+            lambda: self.start_orbit_path(),
+            lambda: self.start_custom_path(),
+            lambda: self.stop_camera_animation(),
+            lambda: self.pause_camera_animation()
+        )
+        
         control_scroll_layout.addStretch()
         control_scroll.setWidget(control_scroll_widget)
         main_layout.insertWidget(0, control_scroll, 1)
@@ -153,7 +169,11 @@ class STLViewer(QtWidgets.QWidget):
         # 3D view
         self.canvas = scene.SceneCanvas(keys="interactive", bgcolor="white")
         self.view = self.canvas.central_widget.add_view()
-        self.view.camera = scene.cameras.ArcballCamera(fov=60)
+        # Use TurntableCamera for better fly-through support, fallback to ArcballCamera
+        try:
+            self.view.camera = scene.cameras.TurntableCamera(fov=60)
+        except:
+            self.view.camera = scene.cameras.ArcballCamera(fov=60)
         right_column.addWidget(self.canvas.native, 3)
         
         # Add slices to right column
@@ -210,6 +230,11 @@ class STLViewer(QtWidgets.QWidget):
         
         # GLTF animated viewer windows
         self.gltf_windows = []
+        
+        # Camera fly-through state
+        self.camera_waypoints = []
+        self.camera_animation = None
+        self.camera_timer = None
     
     def _connect_signals(self):
         """Connect model dropdown signal."""
@@ -218,6 +243,11 @@ class STLViewer(QtWidgets.QWidget):
         )
         self.model_list.itemChanged.connect(lambda: update_scene(self))
         # Heart button stays enabled; no dynamic state needed
+        
+        # Setup camera animation timer
+        self.camera_timer = QtCore.QTimer()
+        self.camera_timer.timeout.connect(self._update_camera_animation)
+        self.camera_timer.setInterval(33)  # ~30 FPS
     
     # Wrapper methods for backward compatibility
     def clear_scene(self):
@@ -486,6 +516,125 @@ class STLViewer(QtWidgets.QWidget):
             return False
 
         return False
+    
+    # Camera fly-through control methods
+    def record_camera_waypoint(self):
+        """Record current camera position as a waypoint."""
+        if record_waypoint(self):
+            self._update_camera_status()
+            # Enable custom path button if we have at least 2 waypoints
+            if len(self.camera_waypoints) >= 2:
+                self.camera_controls['start_custom'].setEnabled(True)
+    
+    def clear_camera_waypoints(self):
+        """Clear all recorded camera waypoints."""
+        clear_waypoints(self)
+        self._update_camera_status()
+        self.camera_controls['start_custom'].setEnabled(False)
+    
+    def start_orbit_path(self):
+        """Start orbit fly-through animation."""
+        if self.scene_bounds is None:
+            QtWidgets.QMessageBox.warning(
+                self, "No Scene", 
+                "Please load a 3D model first to create an orbit path."
+            )
+            return
+        
+        speed = self.camera_controls['speed_slider'].value() / 100.0
+        loop = self.camera_controls['loop_checkbox'].isChecked()
+        
+        if start_flythrough(self, path_mode='orbit', loop=loop, speed=speed):
+            self.camera_timer.start()
+            self._update_camera_controls_state(playing=True)
+            self._update_camera_status()
+    
+    def start_custom_path(self):
+        """Start custom path fly-through animation."""
+        if len(self.camera_waypoints) < 2:
+            QtWidgets.QMessageBox.warning(
+                self, "Not Enough Waypoints",
+                "Please record at least 2 waypoints before starting a custom path."
+            )
+            return
+        
+        speed = self.camera_controls['speed_slider'].value() / 100.0
+        loop = self.camera_controls['loop_checkbox'].isChecked()
+        
+        if start_flythrough(self, path_mode='custom', loop=loop, speed=speed):
+            self.camera_timer.start()
+            self._update_camera_controls_state(playing=True)
+            self._update_camera_status()
+    
+    def stop_camera_animation(self):
+        """Stop camera fly-through animation."""
+        stop_flythrough(self)
+        if self.camera_timer:
+            self.camera_timer.stop()
+        self._update_camera_controls_state(playing=False)
+        self._update_camera_status()
+    
+    def pause_camera_animation(self):
+        """Pause or resume camera fly-through animation."""
+        if hasattr(self, 'camera_animation') and self.camera_animation:
+            anim = self.camera_animation
+            anim['paused'] = not anim['paused']
+            
+            if anim['paused']:
+                self.camera_controls['pause'].setText("▶️ Resume")
+                self.camera_controls['status'].setText("Status: Paused")
+            else:
+                self.camera_controls['pause'].setText("⏸️ Pause")
+                self.camera_controls['status'].setText("Status: Playing")
+        else:
+            # If paused and no animation, start from current state
+            self._update_camera_status()
+    
+    def _update_camera_animation(self):
+        """Update camera animation frame (called by timer)."""
+        if hasattr(self, 'camera_animation') and self.camera_animation:
+            dt = 0.033  # ~30 FPS (33ms interval)
+            still_playing = update_camera_animation(self, dt)
+            
+            if not still_playing:
+                self.stop_camera_animation()
+            else:
+                # Update speed if changed
+                if self.camera_animation:
+                    speed = self.camera_controls['speed_slider'].value() / 100.0
+                    self.camera_animation['speed'] = speed
+                    loop = self.camera_controls['loop_checkbox'].isChecked()
+                    self.camera_animation['loop'] = loop
+    
+    def _update_camera_controls_state(self, playing=False):
+        """Update enabled/disabled state of camera controls."""
+        if playing:
+            self.camera_controls['start_orbit'].setEnabled(False)
+            self.camera_controls['start_custom'].setEnabled(False)
+            self.camera_controls['pause'].setEnabled(True)
+            self.camera_controls['stop'].setEnabled(True)
+            self.camera_controls['record'].setEnabled(False)
+        else:
+            self.camera_controls['start_orbit'].setEnabled(True)
+            self.camera_controls['start_custom'].setEnabled(len(self.camera_waypoints) >= 2)
+            self.camera_controls['pause'].setEnabled(False)
+            self.camera_controls['stop'].setEnabled(False)
+            self.camera_controls['record'].setEnabled(True)
+            self.camera_controls['pause'].setText("⏸️ Pause")
+    
+    def _update_camera_status(self):
+        """Update camera status label."""
+        waypoint_count = len(self.camera_waypoints)
+        self.camera_controls['waypoint_count'].setText(f"Waypoints: {waypoint_count}")
+        
+        if hasattr(self, 'camera_animation') and self.camera_animation:
+            anim = self.camera_animation
+            if anim['paused']:
+                self.camera_controls['status'].setText("Status: Paused")
+            else:
+                self.camera_controls['status'].setText("Status: Playing")
+        else:
+            self.camera_controls['status'].setText("Status: Stopped")
 
 
 if __name__ == "__main__":
