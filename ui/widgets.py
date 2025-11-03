@@ -377,6 +377,31 @@ def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_w
     controls['start_orbit'].clicked.connect(start_orbit_cb)
     layout.addWidget(controls['start_orbit'])
     
+    # Orbit radius control (for interior/exterior paths)
+    orbit_radius_label = QtWidgets.QLabel("Orbit Radius:")
+    orbit_radius_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    layout.addWidget(orbit_radius_label)
+    
+    orbit_radius_layout = QtWidgets.QHBoxLayout()
+    controls['orbit_radius_slider'] = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+    controls['orbit_radius_slider'].setMinimum(-200)  # Negative = inside model
+    controls['orbit_radius_slider'].setMaximum(200)   # Positive = outside model
+    controls['orbit_radius_slider'].setValue(150)     # Default: 1.5x outside
+    controls['orbit_radius_label'] = QtWidgets.QLabel("150%")
+    controls['orbit_radius_label'].setMinimumWidth(50)
+    orbit_radius_layout.addWidget(controls['orbit_radius_slider'])
+    orbit_radius_layout.addWidget(controls['orbit_radius_label'])
+    layout.addLayout(orbit_radius_layout)
+    
+    controls['orbit_radius_slider'].valueChanged.connect(
+        lambda val: controls['orbit_radius_label'].setText(f"{val}%")
+    )
+    
+    # Add hint label
+    hint_label = QtWidgets.QLabel("Negative = inside model")
+    hint_label.setStyleSheet("font-size: 10px; color: #666; font-style: italic;")
+    layout.addWidget(hint_label)
+    
     controls['start_custom'] = QtWidgets.QPushButton("🛤️ Start Custom Path")
     controls['start_custom'].clicked.connect(start_custom_cb)
     controls['start_custom'].setEnabled(False)

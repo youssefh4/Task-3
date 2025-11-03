@@ -543,8 +543,9 @@ class STLViewer(QtWidgets.QWidget):
         
         speed = self.camera_controls['speed_slider'].value() / 100.0
         loop = self.camera_controls['loop_checkbox'].isChecked()
+        radius_percent = self.camera_controls['orbit_radius_slider'].value()
         
-        if start_flythrough(self, path_mode='orbit', loop=loop, speed=speed):
+        if start_flythrough(self, path_mode='orbit', loop=loop, speed=speed, radius_percent=radius_percent):
             self.camera_timer.start()
             self._update_camera_controls_state(playing=True)
             self._update_camera_status()

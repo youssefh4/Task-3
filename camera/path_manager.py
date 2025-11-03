@@ -183,13 +183,14 @@ def clear_waypoints(viewer_instance):
     print("Waypoints cleared")
 
 
-def generate_orbit_path(viewer_instance, num_points=60, radius=None, height_variation=0.3):
-    """Generate an orbital path around the scene.
+def generate_orbit_path(viewer_instance, num_points=60, radius=None, radius_percent=None, height_variation=0.3):
+    """Generate an orbital path around (or inside) the scene.
     
     Args:
         viewer_instance: The STLViewer instance
         num_points: Number of points in the orbit path
-        radius: Orbit radius (auto-calculated if None)
+        radius: Orbit radius in absolute units (auto-calculated if None)
+        radius_percent: Orbit radius as percentage of scene size (-200 to 200, negative = inside)
         height_variation: Vertical variation factor (0.0 to 1.0)
         
     Returns:
@@ -204,7 +205,11 @@ def generate_orbit_path(viewer_instance, num_points=60, radius=None, height_vari
     size = np.max(maxs - mins)
     
     if radius is None:
-        radius = size * 1.5  # 1.5x the scene size
+        if radius_percent is not None:
+            # Use percentage of scene size (negative = inside, positive = outside)
+            radius = size * (radius_percent / 100.0)
+        else:
+            radius = size * 1.5  # Default: 1.5x the scene size (outside)
     
     waypoints = []
     
@@ -361,7 +366,7 @@ def _interpolate_path(waypoints, num_samples=200, smoothing=0):
         return pos_interp, cent_interp, up_interp, fov_interp
 
 
-def start_flythrough(viewer_instance, path_mode='custom', loop=True, speed=1.0):
+def start_flythrough(viewer_instance, path_mode='custom', loop=True, speed=1.0, radius_percent=None):
     """Start camera fly-through animation.
     
     Args:
@@ -369,6 +374,7 @@ def start_flythrough(viewer_instance, path_mode='custom', loop=True, speed=1.0):
         path_mode: 'custom' (use recorded waypoints) or 'orbit' (generate orbit path)
         loop: Whether to loop the animation
         speed: Animation speed multiplier (1.0 = normal speed)
+        radius_percent: Orbit radius as percentage of scene size (for orbit mode, negative = inside)
         
     Returns:
         bool: True if animation started, False otherwise
@@ -378,7 +384,7 @@ def start_flythrough(viewer_instance, path_mode='custom', loop=True, speed=1.0):
     
     # Generate or get path based on mode
     if path_mode == 'orbit':
-        waypoints = generate_orbit_path(viewer_instance)
+        waypoints = generate_orbit_path(viewer_instance, radius_percent=radius_percent)
         if not waypoints:
             return False
     else:  # custom
@@ -479,12 +485,19 @@ def update_camera_animation(viewer_instance, dt):
         # Calculate distance from position to center
         distance = np.linalg.norm(pos - center)
         
+        # Ensure minimum distance to avoid camera issues
+        # This allows the camera to go inside the model
+        min_distance = 0.01  # Very small minimum to allow interior paths
+        
         # Calculate direction vector from center to position
         direction = pos - center
-        if np.linalg.norm(direction) > 0:
-            direction = direction / np.linalg.norm(direction)
+        dir_norm = np.linalg.norm(direction)
+        if dir_norm > min_distance:
+            direction = direction / dir_norm
         else:
+            # If position is very close to center, use default direction
             direction = np.array([0, 0, 1])
+            distance = max(distance, min_distance)
         
         # Set camera center (this is the look-at point)
         if hasattr(camera, 'center'):
