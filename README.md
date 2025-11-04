@@ -119,6 +119,28 @@ python main.py
    - Use "Focus on Model" to center the camera on loaded meshes
    - Adjust scene settings for optimal visualization
 
+
+
+
+https://github.com/user-attachments/assets/a6450d80-92be-421e-abc6-7a7b71f374d6
+
+
+
+
+
+https://github.com/user-attachments/assets/47464d10-3f0f-474a-ba0d-a68abbe97540
+
+
+
+
+
+
+
+
+
+
+
+
 ## 📁 Project Structure
 
 ```
