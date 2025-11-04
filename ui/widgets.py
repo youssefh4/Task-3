@@ -152,7 +152,7 @@ def create_mpr_controls(parent_layout, mark_points_cb, generate_mpr_cb, reset_po
 
 
 def create_models_controls(parent_layout, import_gltf_cb, import_gltf_animated_cb, 
-                           webengine_available=True):
+                          webengine_available=True, import_fbx_animated_cb=None):
     """Create 3D models control widgets.
     
     Args:
@@ -208,6 +208,14 @@ def create_models_controls(parent_layout, import_gltf_cb, import_gltf_animated_c
     controls['import_gltf_animated'].clicked.connect(import_gltf_animated_cb)
     controls['import_gltf_animated'].setEnabled(webengine_available)
     layout.addWidget(controls['import_gltf_animated'])
+
+    # FBX animated viewer (Three.js)
+    controls['fbx_animated'] = QtWidgets.QPushButton("🎞️ View Animated FBX")
+    if import_fbx_animated_cb is not None:
+        controls['fbx_animated'].clicked.connect(import_fbx_animated_cb)
+    # Always enable the button; handler will warn if WebEngine missing
+    controls['fbx_animated'].setEnabled(True)
+    layout.addWidget(controls['fbx_animated'])
     
     # Heart animation button (launches external heart animation script)
     controls['heart_animation'] = QtWidgets.QPushButton("❤️ Heart Animation")

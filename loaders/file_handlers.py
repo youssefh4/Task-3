@@ -23,6 +23,8 @@ def load_mesh_folder(viewer_instance):
     viewer_instance.model_list.clear()
     viewer_instance.model_dropdown.clear()
     viewer_instance.meshes.clear()
+    if hasattr(viewer_instance, 'mesh_file_paths'):
+        viewer_instance.mesh_file_paths.clear()
     viewer_instance.clear_scene()
     viewer_instance.initial_camera_state = None
     viewer_instance.scene_bounds = None
@@ -50,6 +52,10 @@ def load_mesh_folder(viewer_instance):
             continue
         print(f"Loaded: {f} | Vertices: {len(mesh.vertices)} Faces: {len(mesh.faces)}")
         viewer_instance.meshes[f] = mesh
+        # Store the original file path
+        if not hasattr(viewer_instance, 'mesh_file_paths'):
+            viewer_instance.mesh_file_paths = {}
+        viewer_instance.mesh_file_paths[f] = path
         item = QtWidgets.QListWidgetItem(f)
         item.setCheckState(QtCore.Qt.Checked)
         viewer_instance.model_list.addItem(item)

@@ -361,10 +361,22 @@ def main():
     print("Brain Electric Visualization")
     print("Current Date/Time (UTC):", "2025-11-04 13:34:27")
     print("User:", "youssefh4")
-    print("\nPlease select your 3D brain model file...")
     
     viewer = BrainElectricViewer()
-    viewer.load_models()  # Will prompt for multiple file selection
+    
+    # Check if file paths were provided as command line arguments
+    if len(sys.argv) > 1:
+        # File paths provided via command line
+        file_paths = sys.argv[1:]
+        print(f"\nLoading {len(file_paths)} brain model file(s) from command line...")
+        for path in file_paths:
+            print(f"  - {path}")
+        viewer.load_models(file_paths=file_paths)
+    else:
+        # No arguments provided, prompt for file selection
+        print("\nPlease select your 3D brain model file...")
+        viewer.load_models()  # Will prompt for multiple file selection
+    
     viewer.start()
 
 if __name__ == "__main__":

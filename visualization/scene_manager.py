@@ -172,6 +172,8 @@ def clear_views(viewer_instance):
     
     viewer_instance.meshes.clear()
     viewer_instance.mesh_colors.clear()
+    if hasattr(viewer_instance, 'mesh_file_paths'):
+        viewer_instance.mesh_file_paths.clear()
     clear_scene(viewer_instance)
     viewer_instance.initial_camera_state = None
     viewer_instance.scene_bounds = None

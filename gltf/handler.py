@@ -34,6 +34,10 @@ def import_gltf_model(viewer_instance):
         
         name = os.path.basename(file_path)
         viewer_instance.meshes[name] = mesh
+        # Store the original file path
+        if not hasattr(viewer_instance, 'mesh_file_paths'):
+            viewer_instance.mesh_file_paths = {}
+        viewer_instance.mesh_file_paths[name] = file_path
         item = QtWidgets.QListWidgetItem(name)
         item.setCheckState(QtCore.Qt.Checked)
         viewer_instance.model_list.addItem(item)
@@ -362,6 +366,124 @@ def _generate_threejs_viewer_html(file_url, file_path):
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }});
+    </script>
+</body>
+</html>
+"""
+    return html
+
+
+def import_fbx_animated(viewer_instance):
+    """Open an FBX model in a Three.js viewer with animation support via FBXLoader."""
+    if not WEBENGINE_AVAILABLE:
+        QtWidgets.QMessageBox.warning(
+            viewer_instance,
+            "WebEngine Not Available",
+            "PyQt5.QtWebEngineWidgets is not installed.\n"
+            "Please install it with: pip install PyQtWebEngine"
+        )
+        return
+    
+    file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+        viewer_instance,
+        "Select FBX Model (with animations)",
+        os.path.expanduser("~"),
+        "FBX Files (*.fbx)"
+    )
+    if not file_path:
+        return
+    
+    try:
+        # Build file URL for the local file
+        file_url = os.path.abspath(file_path).replace('\\', '/')
+        if not file_url.startswith('/'):
+            file_url = '/' + file_url
+        file_url = 'file://' + file_url
+        
+        html_content = _generate_threejs_fbx_html(file_url, file_path)
+        
+        # Create window
+        window = QtWidgets.QMainWindow(viewer_instance)
+        window.setWindowTitle(f"FBX Viewer: {os.path.basename(file_path)}")
+        window.setGeometry(100, 100, 1200, 800)
+        window.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
+        
+        central_widget = QtWidgets.QWidget()
+        window.setCentralWidget(central_widget)
+        layout = QtWidgets.QVBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        web_view = QWebEngineView()
+        try:
+            web_view.page().javaScriptConsoleMessage.connect(
+                lambda level, message, line, src: print(f"JS Console [{level}]: {message} (line {line}, source: {src})")
+            )
+        except AttributeError:
+            pass
+        
+        web_view.setHtml(html_content)
+        layout.addWidget(web_view)
+        
+        # Controls
+        controls_widget = QtWidgets.QWidget()
+        controls_layout = QtWidgets.QHBoxLayout(controls_widget)
+        controls_layout.setContentsMargins(5, 5, 5, 5)
+        
+        play_btn = QtWidgets.QPushButton("▶️ Play")
+        pause_btn = QtWidgets.QPushButton("⏸️ Pause")
+        stop_btn = QtWidgets.QPushButton("⏹️ Stop")
+        
+        play_btn.clicked.connect(lambda: web_view.page().runJavaScript("if (mixer) { mixersPlay(); }"))
+        pause_btn.clicked.connect(lambda: web_view.page().runJavaScript("if (mixer) { mixersPause(); }"))
+        stop_btn.clicked.connect(lambda: web_view.page().runJavaScript("if (mixer) { mixersStop(); resetClock(); }"))
+        
+        controls_layout.addWidget(play_btn)
+        controls_layout.addWidget(pause_btn)
+        controls_layout.addWidget(stop_btn)
+        controls_layout.addStretch()
+        layout.addWidget(controls_widget)
+        
+        viewer_instance.gltf_windows.append(window)
+        
+        def closeEvent(event):
+            try:
+                if window in viewer_instance.gltf_windows:
+                    viewer_instance.gltf_windows.remove(window)
+            except Exception:
+                pass
+            event.accept()
+        window.closeEvent = closeEvent
+        
+        window.show(); window.raise_(); window.activateWindow()
+    except Exception as e:
+        QtWidgets.QMessageBox.critical(
+            viewer_instance, "FBX Viewer Error",
+            f"Failed to open FBX viewer:\n{str(e)}"
+        )
+        import traceback
+        traceback.print_exc()
+
+
+def _generate_threejs_fbx_html(file_url, file_path):
+    """Generate HTML content for Three.js FBX viewer with animations."""
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=\"utf-8\">
+    <title>FBX Viewer</title>
+    <style>
+        body {{ margin: 0; overflow: hidden; background: #222; }}
+        #info {{ position: absolute; top: 10px; left: 10px; color: #fff; font: 12px Arial; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; }}
+    </style>
+</head>
+<body>
+    <div id=\"info\">FBX: {os.path.basename(file_path)} • <span id=\"anim-info\">Loading...</span></div>
+    <script src=\"https://unpkg.com/three@0.128.0/build/three.min.js\"></script>
+    <script src=\"https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js\"></script>
+    <script src=\"https://unpkg.com/three@0.128.0/examples/js/loaders/FBXLoader.js\"></script>
+    <script>
+        let scene, camera, renderer, controls;\nlet mixer=null, clock;\nlet model=null;\n\nscene = new THREE.Scene();\nscene.background = new THREE.Color(0x222222);\n\ncamera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);\ncamera.position.set(0, 150, 300);\n\nrenderer = new THREE.WebGLRenderer({{ antialias:true }});\nrenderer.setSize(window.innerWidth, window.innerHeight);\ndocument.body.appendChild(renderer.domElement);\n\ncontrols = new THREE.OrbitControls(camera, renderer.domElement);\ncontrols.enableDamping = true;\n\nconst hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);\nhemi.position.set(0, 200, 0);\nscene.add(hemi);\nconst dir = new THREE.DirectionalLight(0xffffff, 0.8);\ndir.position.set(0, 200, 100);\nscene.add(dir);\n\nclock = new THREE.Clock();\n\nfunction fitCameraToObject(object) {{\n  const box = new THREE.Box3().setFromObject(object);\n  const size = box.getSize(new THREE.Vector3());\n  const center = box.getCenter(new THREE.Vector3());\n  const maxSize = Math.max(size.x, size.y, size.z) || 1;\n  const distance = maxSize * 2.0;\n  camera.position.set(center.x + distance, center.y + distance, center.z + distance);\n  camera.lookAt(center);\n  controls.target.copy(center);\n  controls.update();\n}}\n\nconst loader = new THREE.FBXLoader();\nloader.load('{file_url}', function (obj) {{\n    model = obj;\n    scene.add(model);\n    mixer = new THREE.AnimationMixer(model);\n    if (obj.animations && obj.animations.length > 0) {{\n        obj.animations.forEach((clip) => {{\n            const action = mixer.clipAction(clip);\n            action.play();\n        }});\n        document.getElementById('anim-info').innerText = 'Animations: ' + obj.animations.length + ' | Playing';\n    }} else {{\n        document.getElementById('anim-info').innerText = 'No animations found';\n    }}\n    fitCameraToObject(model);\n}}, undefined, function (err) {{\n    console.error('FBX load error', err);\n    document.getElementById('anim-info').innerText = 'Error loading FBX';\n}});\n\nfunction animate() {{\n  requestAnimationFrame(animate);\n  const delta = clock.getDelta();\n  if (mixer) mixer.update(delta);\n  controls.update();\n  renderer.render(scene, camera);\n}}\n\nfunction mixersPlay() {{ if (mixer) mixer.timeScale = 1; }}\nfunction mixersPause() {{ if (mixer) mixer.timeScale = 0; }}\nfunction mixersStop() {{ if (mixer) {{ mixer.stopAllAction(); }} }}\nfunction resetClock() {{ if (clock) {{ clock.elapsedTime = 0; }} }}\n\nanimate();\n\nwindow.addEventListener('resize', function() {{\n  camera.aspect = window.innerWidth / window.innerHeight;\n  camera.updateProjectionMatrix();\n  renderer.setSize(window.innerWidth, window.innerHeight);\n}});
     </script>
 </body>
 </html>

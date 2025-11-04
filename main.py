@@ -40,7 +40,7 @@ from mpr.handlers import (
     update_mpr_status
 )
 
-from gltf.handler import import_gltf_model, import_gltf_animated, WEBENGINE_AVAILABLE
+from gltf.handler import import_gltf_model, import_gltf_animated, import_fbx_animated, WEBENGINE_AVAILABLE
 
 from camera.path_manager import (
     record_waypoint, clear_waypoints, generate_orbit_path,
@@ -129,7 +129,8 @@ class STLViewer(QtWidgets.QWidget):
             control_scroll_layout,
             lambda: import_gltf_model(self),
             lambda: import_gltf_animated(self),
-            WEBENGINE_AVAILABLE
+            WEBENGINE_AVAILABLE,
+            lambda: import_fbx_animated(self)
         )
         # Wire heart animation button
         self.model_controls['heart_animation'].clicked.connect(self.start_heart_animation)
@@ -662,8 +663,8 @@ class STLViewer(QtWidgets.QWidget):
 
     def _update_brain_effect_enabled(self):
         try:
-            enabled = self._has_brain_region()
-            self.model_controls['brain_electric'].setEnabled(enabled)
+            # Always enable the Brain Electric Effect button
+            self.model_controls['brain_electric'].setEnabled(True)
         except Exception:
             pass
 
