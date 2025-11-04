@@ -87,6 +87,13 @@ def load_nifti_file(viewer_instance):
         
         print(f"Loaded NIFTI: shape={viewer_instance.nifti_shape}")
         
+    except Exception as e:
+        QtWidgets.QMessageBox.critical(
+            viewer_instance, "Error", f"Failed to load NIFTI file:\n{str(e)}"
+        )
+        return
+    
+    try:
         # Update sliders min/max values based on image dimensions
         from slices.viewer import setup_slice_sliders, connect_slice_sliders
         
@@ -102,23 +109,111 @@ def load_nifti_file(viewer_instance):
         update_slice_display(viewer_instance, 'coronal',
                             viewer_instance.slice_sliders['coronal'].value())
         
-        # Enable MPR buttons
-        viewer_instance.mpr_controls['mark_points'].setEnabled(True)
-        viewer_instance.mpr_controls['reset'].setEnabled(True)
-        
-        # Clear previous marked points
-        viewer_instance.marked_points = []
-        viewer_instance.mpr_result = None
-        viewer_instance.update_mpr_status()
-        
-        # Connect click handler to axial view
-        from mpr.handlers import setup_axial_click_handler
-        setup_axial_click_handler(viewer_instance)
+        # MPR is now handled in a separate window
+        # No need to enable buttons here
         
     except Exception as e:
         QtWidgets.QMessageBox.critical(
-            viewer_instance, "Error", f"Failed to load NIFTI file:\n{str(e)}"
+            viewer_instance, "Error", f"Failed to setup slice viewers:\n{str(e)}"
         )
+
+
+def load_dicom_folder(folder_path):
+    """Load DICOM series from a folder and convert to 3D numpy array.
+    
+    Args:
+        folder_path: Path to folder containing DICOM files
+        
+    Returns:
+        tuple: (3D numpy array, affine matrix)
+    """
+    try:
+        import pydicom
+    except ImportError:
+        raise ImportError(
+            "pydicom is required for DICOM support. Install with: pip install pydicom"
+        )
+    
+    # Find all DICOM files in the folder (recursively)
+    dicom_files = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                # Try to read as DICOM (will fail if not DICOM)
+                ds = pydicom.dcmread(file_path, force=True)
+                if hasattr(ds, 'SliceLocation') or hasattr(ds, 'ImagePositionPatient'):
+                    dicom_files.append((file_path, ds))
+            except:
+                continue
+    
+    if not dicom_files:
+        raise ValueError("No DICOM files found in the selected folder")
+    
+    # Sort by slice location or instance number
+    try:
+        # Try to sort by SliceLocation
+        dicom_files.sort(key=lambda x: float(x[1].SliceLocation) if hasattr(x[1], 'SliceLocation') and x[1].SliceLocation != '' else 0)
+    except:
+        try:
+            # Fallback to InstanceNumber
+            dicom_files.sort(key=lambda x: int(x[1].InstanceNumber) if hasattr(x[1], 'InstanceNumber') and x[1].InstanceNumber != '' else 0)
+        except:
+            # Fallback to filename
+            dicom_files.sort(key=lambda x: x[0])
+    
+    # Load pixel arrays
+    slices = []
+    for file_path, ds in dicom_files:
+        try:
+            pixel_array = ds.pixel_array.astype(np.float32)
+            
+            # Apply rescale slope and intercept if available
+            if hasattr(ds, 'RescaleSlope') and hasattr(ds, 'RescaleIntercept'):
+                pixel_array = pixel_array * float(ds.RescaleSlope) + float(ds.RescaleIntercept)
+            
+            slices.append(pixel_array)
+        except Exception as e:
+            print(f"Warning: Failed to load {file_path}: {e}")
+            continue
+    
+    if not slices:
+        raise ValueError("No valid DICOM slices could be loaded")
+    
+    # Stack slices into 3D array
+    volume = np.stack(slices, axis=0)
+    
+    # Create affine matrix from DICOM metadata
+    # Use identity matrix as default, but try to get spacing/orientation if available
+    affine = np.eye(4)
+    
+    if len(dicom_files) > 0:
+        first_ds = dicom_files[0][1]
+        
+        # Get pixel spacing
+        if hasattr(first_ds, 'PixelSpacing') and first_ds.PixelSpacing:
+            pixel_spacing = [float(x) for x in first_ds.PixelSpacing]
+            affine[0, 0] = pixel_spacing[0] if len(pixel_spacing) > 0 else 1.0
+            affine[1, 1] = pixel_spacing[1] if len(pixel_spacing) > 1 else 1.0
+        
+        # Get slice thickness
+        if hasattr(first_ds, 'SliceThickness') and first_ds.SliceThickness:
+            try:
+                slice_thickness = float(first_ds.SliceThickness)
+                affine[2, 2] = slice_thickness
+            except:
+                pass
+        
+        # Get image position if available
+        if hasattr(first_ds, 'ImagePositionPatient') and first_ds.ImagePositionPatient:
+            try:
+                position = [float(x) for x in first_ds.ImagePositionPatient]
+                affine[0:3, 3] = position[:3]
+            except:
+                pass
+    
+    print(f"Loaded {len(slices)} DICOM slices, shape: {volume.shape}")
+    return volume, affine
 
 
 def load_masks_folder(viewer_instance):

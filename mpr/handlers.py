@@ -31,36 +31,63 @@ def handle_axial_click(viewer_instance, event):
     current_z = viewer_instance.slice_sliders['axial'].value()
     view_widget = viewer_instance.slice_widgets['axial']
     view = view_widget['view']
-    cam_rect = view.camera.rect
-    if cam_rect is None:
+    
+    # Get click position - event.pos is in viewport coordinates
+    click_pos = event.pos
+    
+    # Transform viewport coordinates to scene coordinates using the camera
+    # For PanZoomCamera, we can use the transform to map viewport -> scene
+    try:
+        # Use the camera's transform to map from viewport to scene coordinates
+        # The transform expects normalized coordinates [0, 1] in viewport space
+        viewport_size = view.size
+        if viewport_size is None or viewport_size[0] == 0 or viewport_size[1] == 0:
+            return
+        
+        # Normalize viewport coordinates
+        norm_x = click_pos[0] / viewport_size[0] if viewport_size[0] > 0 else 0
+        norm_y = click_pos[1] / viewport_size[1] if viewport_size[1] > 0 else 0
+        
+        # Get camera rect (scene bounds)
+        cam_rect = view.camera.rect
+        if cam_rect is None:
+            return
+        
+        # Transform to scene coordinates
+        # For PanZoomCamera, scene coordinates map directly from viewport
+        scene_x = cam_rect.left + norm_x * cam_rect.width
+        scene_y = cam_rect.bottom + (1.0 - norm_y) * cam_rect.height  # Flip Y (viewport has Y=0 at top)
+        
+    except Exception as e:
+        print(f"Error transforming coordinates: {e}")
         return
     
-    # Get click position and transform to scene coordinates
-    click_pos = event.pos
-    canvas = view.canvas
+    # Get displayed image dimensions
+    # For axial: nifti_data[:, :, z].T is displayed
+    # Original: nifti_data[:, :, z] has shape [x, y] = [shape[0], shape[1]]
+    # After .T: displayed image has shape [y, x] = [shape[1], shape[0]]
+    # Camera range is set to: x=(0, shape[1]), y=(0, shape[0])
+    # So scene_x maps to columns (Y in NIFTI), scene_y maps to rows (X in NIFTI)
+    img_w = viewer_instance.nifti_shape[1]  # Displayed width = Y in NIFTI
+    img_h = viewer_instance.nifti_shape[0]  # Displayed height = X in NIFTI
     
-    # Transform to scene coordinates
-    scene_x = cam_rect.left + (click_pos[0] / canvas.size[0]) * cam_rect.width
-    scene_y = (cam_rect.bottom + 
-               ((canvas.size[1] - click_pos[1]) / canvas.size[1]) * cam_rect.height)
+    # Convert scene coordinates to pixel coordinates
+    # Scene coordinates are in the camera's coordinate system (0 to img_w, 0 to img_h)
+    pixel_x = int(scene_x)
+    pixel_y = int(scene_y)
     
-    # Map to image coordinates
-    h, w = viewer_instance.nifti_shape[1], viewer_instance.nifti_shape[0]
-    
-    rel_x = (scene_x - cam_rect.left) / cam_rect.width if cam_rect.width > 0 else 0
-    rel_y = (scene_y - cam_rect.bottom) / cam_rect.height if cam_rect.height > 0 else 0
-    rel_x = max(0, min(1, rel_x))
-    rel_y = max(0, min(1, rel_y))
-    
-    # Get pixel coordinates
-    img_x = int(rel_x * w)
-    img_y = int(rel_y * h)
-    img_x = max(0, min(img_x, w - 1))
-    img_y = max(0, min(img_y, h - 1))
+    # Clamp to image bounds
+    pixel_x = max(0, min(pixel_x, img_w - 1))
+    pixel_y = max(0, min(pixel_y, img_h - 1))
     
     # Convert to NIFTI coordinates
-    nifti_x = img_x
-    nifti_y = img_y
+    # Displayed image is nifti_data[:, :, z].T
+    # So displayed[row, col] = NIFTI[col, row, z] (after transpose)
+    # Therefore: 
+    # - pixel_x (column in displayed) = Y in NIFTI
+    # - pixel_y (row in displayed) = X in NIFTI
+    nifti_x = pixel_y  # X in NIFTI = row in displayed image
+    nifti_y = pixel_x  # Y in NIFTI = column in displayed image
     nifti_z = current_z
     
     # Validate and add point

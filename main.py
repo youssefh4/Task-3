@@ -12,7 +12,7 @@ from vispy import scene
 from ui.styles import APPLICATION_STYLESHEET
 from ui.widgets import (
     create_slice_viewer, create_file_loading_controls,
-    create_medical_imaging_controls, create_mpr_controls,
+    create_medical_imaging_controls, create_groupbox,
     create_models_controls, create_clipping_controls,
     create_view_controls, create_camera_flythrough_controls
 )
@@ -35,11 +35,6 @@ from visualization.clipping import (
 from slices.viewer import update_slice_display
 from slices.slice_3d import visualize_slices_3d, update_slices_3d_images
 
-from mpr.handlers import (
-    toggle_marking_points, generate_mpr, reset_mpr_points,
-    update_mpr_status
-)
-
 from gltf.handler import import_gltf_model, import_gltf_animated, import_fbx_animated, WEBENGINE_AVAILABLE
 
 from camera.path_manager import (
@@ -47,6 +42,12 @@ from camera.path_manager import (
     start_flythrough, stop_flythrough, update_camera_animation,
     get_path_info
 )
+
+try:
+    from mpr.mpr_window import MPRWindow
+except ImportError:
+    MPRWindow = None
+
 
 
 class STLViewer(QtWidgets.QWidget):
@@ -67,13 +68,17 @@ class STLViewer(QtWidgets.QWidget):
         
         # Main layout
         main_layout = QtWidgets.QHBoxLayout()
-        control_layout = QtWidgets.QVBoxLayout()
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
         right_column = QtWidgets.QVBoxLayout()
-        main_layout.addLayout(control_layout, 1)
-        main_layout.addLayout(right_column, 3)
+        right_column.setSpacing(0)
+        right_column.setContentsMargins(0, 0, 0, 0)
         
         # Create slice viewers
         slices_layout = QtWidgets.QHBoxLayout()
+        slices_layout.setSpacing(0)
+        slices_layout.setContentsMargins(0, 0, 0, 0)
         self.slice_widgets = {}
         self.slice_sliders = {}
         self.slice_labels = {}
@@ -97,12 +102,12 @@ class STLViewer(QtWidgets.QWidget):
         # Control panel in scrollable area
         control_scroll = QtWidgets.QScrollArea()
         control_scroll.setWidgetResizable(True)
-        control_scroll.setMinimumWidth(280)
-        control_scroll.setMaximumWidth(350)
+        control_scroll.setMinimumWidth(250)
+        control_scroll.setMaximumWidth(300)
         control_scroll_widget = QtWidgets.QWidget()
         control_scroll_layout = QtWidgets.QVBoxLayout(control_scroll_widget)
-        control_scroll_layout.setSpacing(10)
-        control_scroll_layout.setContentsMargins(10, 10, 10, 10)
+        control_scroll_layout.setSpacing(8)
+        control_scroll_layout.setContentsMargins(8, 8, 8, 8)
         
         # Create control groups
         self.file_buttons = create_file_loading_controls(
@@ -118,12 +123,20 @@ class STLViewer(QtWidgets.QWidget):
             lambda: visualize_slices_3d(self)
         )
         
-        self.mpr_controls = create_mpr_controls(
-            control_scroll_layout,
-            lambda: toggle_marking_points(self),
-            lambda: generate_mpr(self),
-            lambda: reset_mpr_points(self)
-        )
+        # Curved MPR button (opens new window)
+        from ui.widgets import create_groupbox
+        mpr_group, mpr_layout = create_groupbox("Curved MPR", control_scroll_layout)
+        self.mpr_button = QtWidgets.QPushButton("Open Curved MPR")
+        self.mpr_button.clicked.connect(self.open_mpr_window)
+        mpr_layout.addWidget(self.mpr_button)
+        
+        # Keep MPR controls for backward compatibility (but they won't be used)
+        self.mpr_controls = {
+            'mark_points': None,
+            'generate': None,
+            'reset': None,
+            'status': None
+        }
         
         self.model_controls = create_models_controls(
             control_scroll_layout,
@@ -170,7 +183,7 @@ class STLViewer(QtWidgets.QWidget):
         
         control_scroll_layout.addStretch()
         control_scroll.setWidget(control_scroll_widget)
-        main_layout.insertWidget(0, control_scroll, 1)
+        main_layout.addWidget(control_scroll, 0)
         
         # 3D view
         self.canvas = scene.SceneCanvas(keys="interactive", bgcolor="white")
@@ -180,13 +193,20 @@ class STLViewer(QtWidgets.QWidget):
             self.view.camera = scene.cameras.TurntableCamera(fov=60)
         except:
             self.view.camera = scene.cameras.ArcballCamera(fov=60)
-        right_column.addWidget(self.canvas.native, 3)
+        
+        # Make canvas expand to fill space
+        canvas_widget = self.canvas.native
+        canvas_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        right_column.addWidget(canvas_widget, 3)
         
         # Add slices to right column
         right_column.addLayout(slices_layout, 1)
         
+        # Add right column to main layout (with stretch to fill remaining space)
+        main_layout.addLayout(right_column, 1)
+        
         # Store references for backward compatibility
-        self.control_layout = control_layout
+        self.control_layout = None
         self.right_column = right_column
         self.model_list = self.model_controls['list']
         self.model_dropdown = self.model_controls['dropdown']
@@ -202,6 +222,9 @@ class STLViewer(QtWidgets.QWidget):
             self._update_brain_effect_enabled()
         except Exception:
             pass
+        
+        # MPR window reference
+        self.mpr_window = None
     
     def _init_data(self):
         """Initialize data structures."""
@@ -314,19 +337,43 @@ class STLViewer(QtWidgets.QWidget):
     
     def toggle_marking_points(self):
         """Toggle MPR point marking."""
-        toggle_marking_points(self)
+        self.open_mpr_window()
     
     def generate_mpr(self):
         """Generate MPR."""
-        generate_mpr(self)
+        if self.mpr_window:
+            self.mpr_window.generate()
     
     def reset_mpr_points(self):
         """Reset MPR points."""
-        reset_mpr_points(self)
+        if self.mpr_window:
+            self.mpr_window.reset_points()
     
     def update_mpr_status(self):
         """Update MPR status."""
-        update_mpr_status(self)
+        pass  # Status handled in MPR window
+    
+    def open_mpr_window(self):
+        """Open the Curved MPR window."""
+        if MPRWindow is None:
+            QtWidgets.QMessageBox.warning(
+                self, "MPR Window Not Available",
+                "MPR window module could not be imported."
+            )
+            return
+        
+        if self.nifti_data is None:
+            QtWidgets.QMessageBox.warning(
+                self, "No NIFTI Loaded",
+                "Please load a NIFTI file first."
+            )
+            return
+        
+        if self.mpr_window is None:
+            self.mpr_window = MPRWindow(self)
+        self.mpr_window.show()
+        self.mpr_window.raise_()
+        self.mpr_window.activateWindow()
     
     def import_gltf_model(self):
         """Import GLTF model."""
@@ -593,10 +640,10 @@ class STLViewer(QtWidgets.QWidget):
             anim['paused'] = not anim['paused']
             
             if anim['paused']:
-                self.camera_controls['pause'].setText("▶️ Resume")
+                self.camera_controls['pause'].setText("Resume")
                 self.camera_controls['status'].setText("Status: Paused")
             else:
-                self.camera_controls['pause'].setText("⏸️ Pause")
+                self.camera_controls['pause'].setText("Pause")
                 self.camera_controls['status'].setText("Status: Playing")
         else:
             # If paused and no animation, start from current state
@@ -632,7 +679,7 @@ class STLViewer(QtWidgets.QWidget):
             self.camera_controls['pause'].setEnabled(False)
             self.camera_controls['stop'].setEnabled(False)
             self.camera_controls['record'].setEnabled(True)
-            self.camera_controls['pause'].setText("⏸️ Pause")
+            self.camera_controls['pause'].setText("Pause")
     
     def _update_camera_status(self):
         """Update camera status label."""

@@ -9,10 +9,12 @@ APPLICATION_STYLESHEET = """
         background-color: #0078d4;
         color: white;
         border: none;
-        border-radius: 4px;
-        padding: 8px 16px;
+        border-radius: 3px;
+        padding: 4px 5px;
         font-weight: 500;
-        min-height: 28px;
+        min-height: 20px;
+        font-size: 8.5pt;
+        max-width: 220px;
     }
     QPushButton:hover {
         background-color: #106ebe;
@@ -34,16 +36,16 @@ APPLICATION_STYLESHEET = """
 GROUPBOX_STYLESHEET = """
     QGroupBox {
         font-weight: bold;
-        font-size: 11px;
-        border: 2px solid #cccccc;
-        border-radius: 5px;
-        margin-top: 10px;
-        padding-top: 10px;
+        font-size: 10px;
+        border: 1px solid #cccccc;
+        border-radius: 3px;
+        margin-top: 8px;
+        padding-top: 8px;
     }
     QGroupBox::title {
         subcontrol-origin: margin;
-        left: 10px;
-        padding: 0 5px;
+        left: 8px;
+        padding: 0 3px;
     }
 """
 

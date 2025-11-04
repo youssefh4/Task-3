@@ -14,25 +14,30 @@ def create_slice_viewer(view_name):
         tuple: (slice_container_layout, canvas, slider, label)
     """
     slice_container = QtWidgets.QVBoxLayout()
+    slice_container.setSpacing(0)
+    slice_container.setContentsMargins(0, 0, 0, 0)
     
     # Create 2D canvas for slice view
     canvas = scene.SceneCanvas(keys="interactive", bgcolor="black")
     view = canvas.central_widget.add_view()
     view.camera = scene.cameras.PanZoomCamera(aspect=1)
     
-    slice_container.addWidget(canvas.native)
+    # Make canvas expand to fill space
+    canvas_widget = canvas.native
+    canvas_widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+    slice_container.addWidget(canvas_widget, 1)
     
     # Add slider for slice navigation
-    label = QtWidgets.QLabel(f"{view_name.capitalize()} Slice: 0")
-    label.setStyleSheet("font-weight: bold; color: #0078d4; padding: 3px;")
+    label = QtWidgets.QLabel(f"{view_name.capitalize()}: 0")
+    label.setStyleSheet("font-weight: normal; color: #333; padding: 2px; font-size: 9pt;")
     label.setAlignment(QtCore.Qt.AlignCenter)
-    slice_container.addWidget(label)
+    slice_container.addWidget(label, 0)
     
     slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
     slider.setMinimum(0)
     slider.setMaximum(100)
     slider.setValue(50)
-    slice_container.addWidget(slider)
+    slice_container.addWidget(slider, 0)
     
     return slice_container, canvas, slider, label, view
 
@@ -52,7 +57,7 @@ def create_groupbox(title, parent_layout):
     group = QtWidgets.QGroupBox(title)
     group.setStyleSheet(GROUPBOX_STYLESHEET)
     layout = QtWidgets.QVBoxLayout()
-    layout.setSpacing(5)
+    layout.setSpacing(4)
     group.setLayout(layout)
     parent_layout.addWidget(group)
     return group, layout
@@ -70,18 +75,18 @@ def create_file_loading_controls(parent_layout, load_folder_cb, load_nifti_cb, l
     Returns:
         dict: Dictionary with button references
     """
-    group, layout = create_groupbox("📁 File Loading", parent_layout)
+    group, layout = create_groupbox("File Loading", parent_layout)
     
     buttons = {}
-    buttons['folder'] = QtWidgets.QPushButton("📦 Load 3D Meshes")
+    buttons['folder'] = QtWidgets.QPushButton("Load Meshes")
     buttons['folder'].clicked.connect(load_folder_cb)
     layout.addWidget(buttons['folder'])
     
-    buttons['nifti'] = QtWidgets.QPushButton("🖼️ Load NIFTI Image")
+    buttons['nifti'] = QtWidgets.QPushButton("Load Scans")
     buttons['nifti'].clicked.connect(load_nifti_cb)
     layout.addWidget(buttons['nifti'])
     
-    buttons['masks'] = QtWidgets.QPushButton("🎭 Load Masks")
+    buttons['masks'] = QtWidgets.QPushButton("Load Masks")
     buttons['masks'].clicked.connect(load_masks_cb)
     layout.addWidget(buttons['masks'])
     
@@ -99,14 +104,14 @@ def create_medical_imaging_controls(parent_layout, visualize_3d_cb, visualize_sl
     Returns:
         dict: Dictionary with button references
     """
-    group, layout = create_groupbox("🏥 Medical Imaging", parent_layout)
+    group, layout = create_groupbox("Medical Imaging", parent_layout)
     
     buttons = {}
-    buttons['visualize_3d'] = QtWidgets.QPushButton("🔲 Visualize Masks in 3D")
+    buttons['visualize_3d'] = QtWidgets.QPushButton("Visualize Masks 3D")
     buttons['visualize_3d'].clicked.connect(visualize_3d_cb)
     layout.addWidget(buttons['visualize_3d'])
     
-    buttons['visualize_slices'] = QtWidgets.QPushButton("📊 Visualize Slices")
+    buttons['visualize_slices'] = QtWidgets.QPushButton("Visualize Slices")
     buttons['visualize_slices'].clicked.connect(visualize_slices_cb)
     layout.addWidget(buttons['visualize_slices'])
     
@@ -125,26 +130,26 @@ def create_mpr_controls(parent_layout, mark_points_cb, generate_mpr_cb, reset_po
     Returns:
         dict: Dictionary with button and label references
     """
-    group, layout = create_groupbox("📈 Curved MPR", parent_layout)
+    group, layout = create_groupbox("Curved MPR", parent_layout)
     
     controls = {}
-    controls['mark_points'] = QtWidgets.QPushButton("✏️ Mark Points")
+    controls['mark_points'] = QtWidgets.QPushButton("Mark Points")
     controls['mark_points'].clicked.connect(mark_points_cb)
     controls['mark_points'].setEnabled(False)
     layout.addWidget(controls['mark_points'])
     
-    controls['generate'] = QtWidgets.QPushButton("⚙️ Generate MPR")
+    controls['generate'] = QtWidgets.QPushButton("Generate MPR")
     controls['generate'].clicked.connect(generate_mpr_cb)
     controls['generate'].setEnabled(False)
     layout.addWidget(controls['generate'])
     
-    controls['reset'] = QtWidgets.QPushButton("🔄 Reset Points")
+    controls['reset'] = QtWidgets.QPushButton("Reset Points")
     controls['reset'].clicked.connect(reset_points_cb)
     controls['reset'].setEnabled(False)
     layout.addWidget(controls['reset'])
     
     controls['status'] = QtWidgets.QLabel("Points: 0")
-    controls['status'].setStyleSheet("padding: 5px; background-color: #f0f0f0; border-radius: 3px;")
+    controls['status'].setStyleSheet("padding: 3px; background-color: #f0f0f0; border-radius: 2px;")
     controls['status'].setAlignment(QtCore.Qt.AlignCenter)
     layout.addWidget(controls['status'])
     
@@ -164,12 +169,12 @@ def create_models_controls(parent_layout, import_gltf_cb, import_gltf_animated_c
     Returns:
         dict: Dictionary with control references
     """
-    group, layout = create_groupbox("🎯 3D Models", parent_layout)
+    group, layout = create_groupbox("3D Models", parent_layout)
     
     controls = {}
     
-    focus_label = QtWidgets.QLabel("Focus on Model:")
-    focus_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    focus_label = QtWidgets.QLabel("Focus:")
+    focus_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(focus_label)
     
     controls['dropdown'] = QtWidgets.QComboBox()
@@ -177,16 +182,16 @@ def create_models_controls(parent_layout, import_gltf_cb, import_gltf_animated_c
     controls['dropdown'].addItem("None")
     layout.addWidget(controls['dropdown'])
     
-    models_list_label = QtWidgets.QLabel("Loaded Models:")
-    models_list_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    models_list_label = QtWidgets.QLabel("Models:")
+    models_list_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(models_list_label)
     
     controls['list'] = QtWidgets.QListWidget()
-    controls['list'].setMaximumHeight(150)
+    controls['list'].setMaximumHeight(120)
     layout.addWidget(controls['list'])
     
     opacity_label = QtWidgets.QLabel("Opacity:")
-    opacity_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    opacity_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(opacity_label)
     
     opacity_layout = QtWidgets.QHBoxLayout()
@@ -195,22 +200,22 @@ def create_models_controls(parent_layout, import_gltf_cb, import_gltf_animated_c
     controls['opacity_slider'].setMaximum(100)
     controls['opacity_slider'].setValue(100)
     controls['opacity_label'] = QtWidgets.QLabel("100%")
-    controls['opacity_label'].setMinimumWidth(40)
+    controls['opacity_label'].setMinimumWidth(35)
     opacity_layout.addWidget(controls['opacity_slider'])
     opacity_layout.addWidget(controls['opacity_label'])
     layout.addLayout(opacity_layout)
     
-    controls['import_gltf'] = QtWidgets.QPushButton("📂 Import Model (GLTF/GLB)")
+    controls['import_gltf'] = QtWidgets.QPushButton("Import GLTF/GLB")
     controls['import_gltf'].clicked.connect(import_gltf_cb)
     layout.addWidget(controls['import_gltf'])
     
-    controls['import_gltf_animated'] = QtWidgets.QPushButton("🎬 View Animated GLTF/GLB")
+    controls['import_gltf_animated'] = QtWidgets.QPushButton("View Animated GLTF")
     controls['import_gltf_animated'].clicked.connect(import_gltf_animated_cb)
     controls['import_gltf_animated'].setEnabled(webengine_available)
     layout.addWidget(controls['import_gltf_animated'])
 
     # FBX animated viewer (Three.js)
-    controls['fbx_animated'] = QtWidgets.QPushButton("🎞️ View Animated FBX")
+    controls['fbx_animated'] = QtWidgets.QPushButton("View Animated FBX")
     if import_fbx_animated_cb is not None:
         controls['fbx_animated'].clicked.connect(import_fbx_animated_cb)
     # Always enable the button; handler will warn if WebEngine missing
@@ -218,12 +223,12 @@ def create_models_controls(parent_layout, import_gltf_cb, import_gltf_animated_c
     layout.addWidget(controls['fbx_animated'])
     
     # Heart animation button (launches external heart animation script)
-    controls['heart_animation'] = QtWidgets.QPushButton("❤️ Heart Animation")
+    controls['heart_animation'] = QtWidgets.QPushButton("Heart Animation")
     controls['heart_animation'].setEnabled(True)
     layout.addWidget(controls['heart_animation'])
 
     # Brain electric effect button (VTK visualization)
-    controls['brain_electric'] = QtWidgets.QPushButton("🧠 Brain Electric Effect")
+    controls['brain_electric'] = QtWidgets.QPushButton("Brain Electric Effect")
     controls['brain_electric'].setEnabled(True)
     layout.addWidget(controls['brain_electric'])
 
@@ -241,7 +246,7 @@ def create_clipping_controls(parent_layout, update_clipping_cb, show_slice_cb):
     Returns:
         dict: Dictionary with control references
     """
-    group, layout = create_groupbox("✂️ Clipping Planes", parent_layout)
+    group, layout = create_groupbox("Clipping Planes", parent_layout)
     
     controls = {}
     
@@ -250,14 +255,14 @@ def create_clipping_controls(parent_layout, update_clipping_cb, show_slice_cb):
                                                '#e74c3c', layout, update_clipping_cb,
                                                lambda: show_slice_cb('axial'))
     
-    layout.addSpacing(5)
+    layout.addSpacing(3)
     
     # Sagittal plane (X) - Blue
     controls['sagittal'] = _create_plane_controls('sagittal', 'Sagittal (X)', 'X',
                                                  '#3498db', layout, update_clipping_cb,
                                                  lambda: show_slice_cb('sagittal'))
     
-    layout.addSpacing(5)
+    layout.addSpacing(3)
     
     # Coronal plane (Y) - Green
     controls['coronal'] = _create_plane_controls('coronal', 'Coronal (Y)', 'Y',
@@ -293,8 +298,8 @@ def _create_plane_controls(plane_name, label_text, axis_label, color,
     )
     parent_layout.addWidget(controls['slider'])
     
-    controls['show_button'] = QtWidgets.QPushButton("📍 Show on Slices")
-    controls['show_button'].setMaximumHeight(25)
+    controls['show_button'] = QtWidgets.QPushButton("Show on Slices")
+    controls['show_button'].setMaximumHeight(22)
     controls['show_button'].clicked.connect(show_slice_cb)
     parent_layout.addWidget(controls['show_button'])
     
@@ -313,18 +318,18 @@ def create_view_controls(parent_layout, update_scene_cb, reset_camera_cb, clear_
     Returns:
         dict: Dictionary with button references
     """
-    group, layout = create_groupbox("🎮 View Controls", parent_layout)
+    group, layout = create_groupbox("View Controls", parent_layout)
     
     buttons = {}
-    buttons['confirm'] = QtWidgets.QPushButton("✅ Apply Changes")
+    buttons['confirm'] = QtWidgets.QPushButton("Apply Changes")
     buttons['confirm'].clicked.connect(update_scene_cb)
     layout.addWidget(buttons['confirm'])
     
-    buttons['reset_camera'] = QtWidgets.QPushButton("🔄 Reset Camera")
+    buttons['reset_camera'] = QtWidgets.QPushButton("Reset Camera")
     buttons['reset_camera'].clicked.connect(reset_camera_cb)
     layout.addWidget(buttons['reset_camera'])
     
-    buttons['clear'] = QtWidgets.QPushButton("🗑️ Clear All")
+    buttons['clear'] = QtWidgets.QPushButton("Clear All")
     buttons['clear'].clicked.connect(clear_views_cb)
     buttons['clear'].setStyleSheet("background-color: #e74c3c; color: white;")
     layout.addWidget(buttons['clear'])
@@ -348,13 +353,13 @@ def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_w
     Returns:
         dict: Dictionary with control references
     """
-    group, layout = create_groupbox("🎥 Camera Fly-Through", parent_layout)
+    group, layout = create_groupbox("Camera Fly-Through", parent_layout)
     
     controls = {}
     
     # Path mode selection
-    mode_label = QtWidgets.QLabel("Path Mode:")
-    mode_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    mode_label = QtWidgets.QLabel("Mode:")
+    mode_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(mode_label)
     
     controls['mode_combo'] = QtWidgets.QComboBox()
@@ -363,36 +368,36 @@ def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_w
     
     # Waypoint controls
     waypoint_label = QtWidgets.QLabel("Waypoints:")
-    waypoint_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    waypoint_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(waypoint_label)
     
-    controls['record'] = QtWidgets.QPushButton("📍 Record Waypoint")
+    controls['record'] = QtWidgets.QPushButton("Record Waypoint")
     controls['record'].clicked.connect(record_waypoint_cb)
     layout.addWidget(controls['record'])
     
-    controls['clear'] = QtWidgets.QPushButton("🗑️ Clear Waypoints")
+    controls['clear'] = QtWidgets.QPushButton("Clear Waypoints")
     controls['clear'].clicked.connect(clear_waypoints_cb)
     layout.addWidget(controls['clear'])
     
     controls['waypoint_count'] = QtWidgets.QLabel("Waypoints: 0")
-    controls['waypoint_count'].setStyleSheet("padding: 5px; background-color: #f0f0f0; border-radius: 3px;")
+    controls['waypoint_count'].setStyleSheet("padding: 3px; background-color: #f0f0f0; border-radius: 2px;")
     controls['waypoint_count'].setAlignment(QtCore.Qt.AlignCenter)
     layout.addWidget(controls['waypoint_count'])
     
-    layout.addSpacing(5)
+    layout.addSpacing(3)
     
     # Animation controls
     anim_label = QtWidgets.QLabel("Animation:")
-    anim_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    anim_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(anim_label)
     
-    controls['start_orbit'] = QtWidgets.QPushButton("🌐 Start Orbit")
+    controls['start_orbit'] = QtWidgets.QPushButton("Start Orbit")
     controls['start_orbit'].clicked.connect(start_orbit_cb)
     layout.addWidget(controls['start_orbit'])
     
     # Orbit radius control (for interior/exterior paths)
     orbit_radius_label = QtWidgets.QLabel("Orbit Radius:")
-    orbit_radius_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    orbit_radius_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(orbit_radius_label)
     
     orbit_radius_layout = QtWidgets.QHBoxLayout()
@@ -401,7 +406,7 @@ def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_w
     controls['orbit_radius_slider'].setMaximum(200)   # Positive = outside model
     controls['orbit_radius_slider'].setValue(150)     # Default: 1.5x outside
     controls['orbit_radius_label'] = QtWidgets.QLabel("150%")
-    controls['orbit_radius_label'].setMinimumWidth(50)
+    controls['orbit_radius_label'].setMinimumWidth(40)
     orbit_radius_layout.addWidget(controls['orbit_radius_slider'])
     orbit_radius_layout.addWidget(controls['orbit_radius_label'])
     layout.addLayout(orbit_radius_layout)
@@ -410,29 +415,24 @@ def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_w
         lambda val: controls['orbit_radius_label'].setText(f"{val}%")
     )
     
-    # Add hint label
-    hint_label = QtWidgets.QLabel("Negative = inside model")
-    hint_label.setStyleSheet("font-size: 10px; color: #666; font-style: italic;")
-    layout.addWidget(hint_label)
-    
-    controls['start_custom'] = QtWidgets.QPushButton("🛤️ Start Custom Path")
+    controls['start_custom'] = QtWidgets.QPushButton("Start Custom Path")
     controls['start_custom'].clicked.connect(start_custom_cb)
     controls['start_custom'].setEnabled(False)
     layout.addWidget(controls['start_custom'])
     
-    controls['pause'] = QtWidgets.QPushButton("⏸️ Pause")
+    controls['pause'] = QtWidgets.QPushButton("Pause")
     controls['pause'].clicked.connect(pause_cb)
     controls['pause'].setEnabled(False)
     layout.addWidget(controls['pause'])
     
-    controls['stop'] = QtWidgets.QPushButton("⏹️ Stop")
+    controls['stop'] = QtWidgets.QPushButton("Stop")
     controls['stop'].clicked.connect(stop_cb)
     controls['stop'].setEnabled(False)
     layout.addWidget(controls['stop'])
     
     # Speed control
     speed_label = QtWidgets.QLabel("Speed:")
-    speed_label.setStyleSheet("font-weight: normal; margin-top: 5px;")
+    speed_label.setStyleSheet("font-weight: normal; margin-top: 3px;")
     layout.addWidget(speed_label)
     
     speed_layout = QtWidgets.QHBoxLayout()
@@ -441,7 +441,7 @@ def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_w
     controls['speed_slider'].setMaximum(200)
     controls['speed_slider'].setValue(100)
     controls['speed_label'] = QtWidgets.QLabel("100%")
-    controls['speed_label'].setMinimumWidth(40)
+    controls['speed_label'].setMinimumWidth(35)
     speed_layout.addWidget(controls['speed_slider'])
     speed_layout.addWidget(controls['speed_label'])
     layout.addLayout(speed_layout)
@@ -451,13 +451,13 @@ def create_camera_flythrough_controls(parent_layout, record_waypoint_cb, clear_w
     )
     
     # Loop checkbox
-    controls['loop_checkbox'] = QtWidgets.QCheckBox("Loop Animation")
+    controls['loop_checkbox'] = QtWidgets.QCheckBox("Loop")
     controls['loop_checkbox'].setChecked(True)
     layout.addWidget(controls['loop_checkbox'])
     
     # Status label
     controls['status'] = QtWidgets.QLabel("Status: Stopped")
-    controls['status'].setStyleSheet("padding: 5px; background-color: #e8f4f8; border-radius: 3px;")
+    controls['status'].setStyleSheet("padding: 3px; background-color: #e8f4f8; border-radius: 2px;")
     controls['status'].setAlignment(QtCore.Qt.AlignCenter)
     layout.addWidget(controls['status'])
     
