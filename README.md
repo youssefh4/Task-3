@@ -2,6 +2,17 @@
 
 A comprehensive, interactive 3D medical imaging application built with PyQt5 and VisPy. This tool provides advanced visualization capabilities for medical images, 3D meshes, and supports multi-planar reconstruction (MPR) with curved path generation.
 
+## 📸 Media
+
+### Screenshots
+*Coming soon - Application screenshots will be added here*
+
+### Videos
+*Coming soon - Demo videos and tutorials will be added here*
+
+### Demo Results
+*Coming soon - Example outputs and visualizations will be added here*
+
 ## 🎯 Features
 
 ### Core Capabilities
