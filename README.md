@@ -21,6 +21,15 @@ A comprehensive, interactive 3D medical imaging application built with PyQt5 and
 - **Scene Management**: Automatic bounds computation and scene organization
 - **Settings Persistence**: Application settings saved between sessions
 
+- 
+![IMG-20251104-WA0018](https://github.com/user-attachments/assets/648227c2-c1e5-4e98-aec7-a3b645a1a02b)
+![IMG-20251104-WA0017](https://github.com/user-attachments/assets/3ce5025d-f263-4450-8420-7b365a276bd1)
+![IMG-20251104-WA0016](https://github.com/user-attachments/assets/e61d920f-8ed2-4edc-a281-7e678783a076)
+![IMG-20251104-WA0015](https://github.com/user-attachments/assets/8174b6ab-a4ef-459f-aaae-886286ae27ac)
+![IMG-20251104-WA0014](https://github.com/user-attachments/assets/186e881e-87a0-4771-961d-3d876e6abd20)
+![IMG-20251104-WA0020](https://github.com/user-attachments/assets/05435ed1-d69f-441a-8741-4a9f42bf5c00)
+![IMG-20251104-WA0019](https://github.com/user-attachments/assets/45341a03-1c98-4bc9-9252-88ac1c71dc7d)
+
 ## 📋 Requirements
 
 ### Core Dependencies
