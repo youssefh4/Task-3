@@ -133,6 +133,11 @@ class STLViewer(QtWidgets.QWidget):
         )
         # Wire heart animation button
         self.model_controls['heart_animation'].clicked.connect(self.start_heart_animation)
+        # Wire brain electric effect button
+        try:
+            self.model_controls['brain_electric'].clicked.connect(self.start_brain_electric_effect)
+        except Exception:
+            pass
         
         # Connect opacity slider
         self.model_controls['opacity_slider'].valueChanged.connect(
@@ -191,6 +196,11 @@ class STLViewer(QtWidgets.QWidget):
             self.model_controls['heart_animation'].setEnabled(True)
         except Exception:
             pass
+        # Initialize brain electric availability
+        try:
+            self._update_brain_effect_enabled()
+        except Exception:
+            pass
     
     def _init_data(self):
         """Initialize data structures."""
@@ -241,7 +251,7 @@ class STLViewer(QtWidgets.QWidget):
         self.model_dropdown.currentIndexChanged.connect(
             lambda: update_scene(self)
         )
-        self.model_list.itemChanged.connect(lambda: update_scene(self))
+        self.model_list.itemChanged.connect(lambda: (update_scene(self), self._update_brain_effect_enabled()))
         # Heart button stays enabled; no dynamic state needed
         
         # Setup camera animation timer
@@ -637,6 +647,45 @@ class STLViewer(QtWidgets.QWidget):
         else:
             self.camera_controls['status'].setText("Status: Stopped")
 
+    # --- Brain Electric Effect integration ---
+    def _has_brain_region(self) -> bool:
+        """Return True if any loaded model name contains midbrain or medulla."""
+        try:
+            for i in range(self.model_list.count()):
+                item = self.model_list.item(i)
+                name = item.text().lower()
+                if ('midbrain' in name) or ('medulla' in name):
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def _update_brain_effect_enabled(self):
+        try:
+            enabled = self._has_brain_region()
+            self.model_controls['brain_electric'].setEnabled(enabled)
+        except Exception:
+            pass
+
+    def start_brain_electric_effect(self):
+        """Launch the VTK brain electric visualization if appropriate regions are present."""
+        if not self._has_brain_region():
+            QtWidgets.QMessageBox.information(
+                self,
+                "Brain Electric Effect",
+                "Load a model whose name includes 'midbrain' or 'medulla' to enable this effect."
+            )
+            return
+        try:
+            script_path = os.path.join(os.path.dirname(__file__), 'run_pygame_demo.py')
+            if not os.path.exists(script_path):
+                QtWidgets.QMessageBox.warning(self, "Not Found", f"Script not found: {script_path}")
+                return
+            # Launch as separate process; let the script prompt for files
+            subprocess.Popen([sys.executable, script_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Brain Electric Effect", f"Failed to start effect:\n{e}")
+
 
 if __name__ == "__main__":
     import sys
@@ -644,6 +693,8 @@ if __name__ == "__main__":
         app = QtWidgets.QApplication(sys.argv)
         viewer = STLViewer()
         viewer.show()
+        viewer.raise_()
+        viewer.activateWindow()
         sys.exit(app.exec_())
     except Exception as e:
         import traceback

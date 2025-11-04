@@ -214,6 +214,11 @@ def create_models_controls(parent_layout, import_gltf_cb, import_gltf_animated_c
     controls['heart_animation'].setEnabled(True)
     layout.addWidget(controls['heart_animation'])
 
+    # Brain electric effect button (VTK visualization)
+    controls['brain_electric'] = QtWidgets.QPushButton("🧠 Brain Electric Effect")
+    controls['brain_electric'].setEnabled(True)
+    layout.addWidget(controls['brain_electric'])
+
     return controls
 
 
