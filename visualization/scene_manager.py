@@ -225,8 +225,17 @@ def clear_views(viewer_instance):
     viewer_instance.marked_points = []
     viewer_instance.mpr_result = None
     viewer_instance.is_marking_points = False
-    viewer_instance.mpr_controls['mark_points'].setEnabled(False)
-    viewer_instance.mpr_controls['generate'].setEnabled(False)
-    viewer_instance.mpr_controls['reset'].setEnabled(False)
+
+    mark_points_btn = viewer_instance.mpr_controls.get('mark_points')
+    generate_btn = viewer_instance.mpr_controls.get('generate')
+    reset_btn = viewer_instance.mpr_controls.get('reset')
+
+    if mark_points_btn is not None:
+        mark_points_btn.setEnabled(False)
+    if generate_btn is not None:
+        generate_btn.setEnabled(False)
+    if reset_btn is not None:
+        reset_btn.setEnabled(False)
+
     viewer_instance.update_mpr_status()
 
