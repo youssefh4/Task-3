@@ -45,13 +45,13 @@
 *Multi-planar reconstruction view*
 
 ![Screenshot 3](https://github.com/user-attachments/assets/e61d920f-8ed2-4edc-a281-7e678783a076)
-*Slice viewer with mask overlay*
+*Musculoskeletal visualiztaion*
 
 ![Screenshot 4](https://github.com/user-attachments/assets/8174b6ab-a4ef-459f-aaae-886286ae27ac)
 *3D mesh rendering*
 
 ![Screenshot 5](https://github.com/user-attachments/assets/186e881e-87a0-4771-961d-3d876e6abd20)
-*Curved MPR visualization*
+*Brain visualization*
 
 ![Screenshot 6](https://github.com/user-attachments/assets/05435ed1-d69f-441a-8741-4a9f42bf5c00)
 *Interactive clipping planes*
@@ -209,11 +209,11 @@ python main.py
 
 [![Demo Video 1](https://img.shields.io/badge/▶️-Watch%20Demo%201-blue)](https://github.com/user-attachments/assets/a6450d80-92be-421e-abc6-7a7b71f374d6)
 
-*Interactive 3D visualization and MPR generation*
+*Interactive 3D visualization*
 
 [![Demo Video 2](https://img.shields.io/badge/▶️-Watch%20Demo%202-blue)](https://github.com/user-attachments/assets/47464d10-3f0f-474a-ba0d-a68abbe97540)
 
-*Advanced features and workflow demonstration*
+*Advanced features and Flythrough camera*
 
 </div>
 
