@@ -61,6 +61,17 @@
 
 </div>
 
+## 📸 Media
+
+### Screenshots
+*Coming soon - Application screenshots will be added here*
+
+### Videos
+*Coming soon - Demo videos and tutorials will be added here*
+
+### Demo Results
+*Coming soon - Example outputs and visualizations will be added here*
+
 ## 🎯 Features
 
 ### Core Capabilities
